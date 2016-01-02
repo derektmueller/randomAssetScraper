@@ -1,0 +1,133 @@
+#!/usr/bin/node
+'usr strict';
+
+var exec = require ('child_process').exec,
+    exit = process.exit,
+    cheerio = require ('cheerio'),
+    fs = require ('fs')
+    ;
+
+
+var OpenGameArtScraper = (function () {
+
+function OpenGameArtScraper (count) {
+    this.n = count; 
+    this.resultsPerPage = 24;
+    this.baseUrl = 'http://opengameart.org';
+};
+
+OpenGameArtScraper.prototype.getSearchResultsUrl = function (page) {
+    page = typeof page === 'undefined' ? null : page; 
+    var params = {};
+    if (page) {
+        params.page = page; 
+    }
+    var url = 'http://opengameart.org/art-search-advanced?keys=&field_art_type_tid%5B%5D=9&field_art_type_tid%5B%5D=10&field_art_type_tid%5B%5D=7273&field_art_type_tid%5B%5D=14&field_art_type_tid%5B%5D=12&field_art_type_tid%5B%5D=13&field_art_type_tid%5B%5D=11&field_art_licenses_tid%5B%5D=2&field_art_licenses_tid%5B%5D=3&field_art_licenses_tid%5B%5D=6&field_art_licenses_tid%5B%5D=5&field_art_licenses_tid%5B%5D=10310&field_art_licenses_tid%5B%5D=4&field_art_licenses_tid%5B%5D=8&field_art_licenses_tid%5B%5D=7&field_art_tags_tid_op=and&field_art_tags_tid=&name=&sort_by=created&sort_order=DESC&items_per_page=' + this.resultsPerPage + '&Collection=';
+    for (var i in params) {
+        url += '&' + i + '=' + params[i];
+    }
+    return url;
+};
+
+OpenGameArtScraper.prototype.getPage = function (url) {
+    return new Promise (function (resolve) { 
+        exec ('curl ' + url, function (err, out) {
+            resolve (out);
+        });
+    });
+};
+
+OpenGameArtScraper.prototype.getPageCount = function (page) {
+    var $ = cheerio.load (page); 
+    var lastPageLinkHref = $('html').find ('.pager-last.last a').attr ('href');
+    var pageCount = lastPageLinkHref.replace (/.*page=(\d+).*/, '$1');
+    return new Promise (function (resolve) { 
+        resolve (pageCount);
+    });
+};
+
+OpenGameArtScraper.prototype.getRandomLinks = function (pageCount) {
+    var that = this;
+    var totalAssetCount = (pageCount - 1) * this.resultsPerPage;
+    var assetIndexes = [];
+    for (var i = 0; i < this.n; i++) {
+        assetIndexes[i] = Math.floor (Math.random () * totalAssetCount);
+    }
+
+    var promises = [];
+    for (var i = 0; i < assetIndexes.length; i++) {
+        var index = assetIndexes[i];
+        var pageNumber = Math.floor (index / this.resultsPerPage);
+        var offset = index % this.resultsPerPage;
+        promises.push (new Promise ((function (pageNumber, offset) { 
+            return function (resolve) {
+                that.getPage (that.getSearchResultsUrl (pageNumber))
+                    .then (function (page) {
+                        var $ = cheerio.load (page);
+                        var href = $('.views-row-' + offset + ' a').attr ('href');
+                        if (href) {
+                            href = that.baseUrl + href;
+                        }
+                        resolve (href);
+                    });
+            };
+        }) (pageNumber, offset)));
+    }
+
+    return Promise.all (promises);
+};
+
+OpenGameArtScraper.prototype.getAssets = function () {
+    var that = this;
+    return new Promise (function (resolve) { 
+        that.getPage (that.getSearchResultsUrl ())
+            .then (that.getPageCount.bind (that))
+            .then (that.getRandomLinks.bind (that))
+            .then (function (links) {
+                resolve (links);
+            });
+    });
+};
+
+return OpenGameArtScraper;
+
+}) ();
+
+
+var App = (function () {
+
+function App () {
+    this.parseArgs ();
+    var scraper = new OpenGameArtScraper (this.options.n);
+    scraper.getAssets ()
+        .then (function (links) {
+            for (var i in links) {
+                /**/console.log (links[i]);
+            }
+        })
+        .catch (function (error) {
+            /**/console.log (error); console.log (error.stack);
+        });
+};
+
+App.prototype.parseArgs = function () {
+    var getOpt = require('node-getopt').create([
+        ['n', '=' , 'asset count'],
+    ])          
+    .bindHelp();
+
+    var opt = getOpt.parseSystem();
+    if (!opt.options.n) {
+        getOpt.showHelp ();
+        process.exit ();
+    }
+
+    this.options = opt.options;
+};
+
+return App;
+
+}) ();
+
+
+new App ();

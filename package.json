@@ -1,0 +1,29 @@
+{
+  "name": "random_asset_scraper",
+  "version": "1.0.0",
+  "description": "Scrape random assets from opengameart.org",
+  "main": "randomAssetScraper",
+  "dependencies": {
+    "cheerio": "^0.19.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "randomAssetScraper -n 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/parenparen/randomAssetScraper.git"
+  },
+  "keywords": [
+    "scraper",
+    "game",
+    "assets",
+    "random"
+  ],
+  "author": "Derek Mueller",
+  "license": "not specified",
+  "bugs": {
+    "url": "https://github.com/parenparen/randomAssetScraper/issues"
+  },
+  "homepage": "https://github.com/parenparen/randomAssetScraper#readme"
+}

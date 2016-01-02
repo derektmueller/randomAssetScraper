@@ -31,7 +31,7 @@ OpenGameArtScraper.prototype.getSearchResultsUrl = function (page) {
 
 OpenGameArtScraper.prototype.getPage = function (url) {
     return new Promise (function (resolve) { 
-        exec ('curl ' + url, function (err, out) {
+        exec ('curl \'' + url + '\'', function (err, out) {
             resolve (out);
         });
     });
@@ -64,7 +64,9 @@ OpenGameArtScraper.prototype.getRandomLinks = function (pageCount) {
                 that.getPage (that.getSearchResultsUrl (pageNumber))
                     .then (function (page) {
                         var $ = cheerio.load (page);
-                        var href = $('.views-row-' + offset + ' a').attr ('href');
+                        var href = $('html').find (
+                            '.view-display-id-search_art_advanced .views-row-' + offset + ' a').
+                            attr ('href');
                         if (href) {
                             href = that.baseUrl + href;
                         }
